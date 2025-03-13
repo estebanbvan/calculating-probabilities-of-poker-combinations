@@ -1,0 +1,59 @@
+import itertools
+import random
+
+# Все возможные масти и ранги карт
+ranks = "23456789TJQKA"
+suits = "♠️♥️♦️♣️"
+deck = [r + s for r in ranks for s in suits]
+
+# Функция для оценки комбинации
+def evaluate_hand(hand):
+    """ Определяет силу комбинации, возвращает (ранг, список карт) """
+    values = sorted([ranks.index(card[0]) for card in hand], reverse=True)
+    suits_count = {s: 0 for s in suits}
+    ranks_count = {r: 0 for r in ranks}
+
+    for card in hand:
+        rank, suit = card[0], card[1]
+        suits_count[suit] += 1
+        ranks_count[rank] += 1
+
+    # Проверяем флеш
+    flush_suit = None
+    for suit, count in suits_count.items():
+        if count >= 5:
+            flush_suit = suit
+            break
+    
+    flush_cards = [card for card in hand if card[1] == flush_suit] if flush_suit else []
+    flush_values = sorted([ranks.index(card[0]) for card in flush_cards], reverse=True)
+
+    # Проверяем стрит
+    sorted_values = sorted(set(values), reverse=True)
+    for i in range(len(sorted_values) - 4):
+        if sorted_values[i] - sorted_values[i+4] == 4:
+            straight_high = sorted_values[i]
+            break
+    else:
+        straight_high = None
+
+    # Проверяем стрит-флеш
+    if flush_suit and len(flush_values) >= 5:
+        for i in range(len(flush_values) - 4):
+            if flush_values[i] - flush_values[i+4] == 4:
+                return (8, flush_values[:5])  # Стрит-флеш
+
+    # Каре, фулл-хаус, сет, две пары, одна пара
+    rank_counts = sorted(ranks_count.items(), key=lambda x: (-x[1], -ranks.index(x[0])))
+    best_hand = [ranks.index(rc[0]) for rc in rank_counts]
+
+    if rank_counts[0][1] == 4:  
+        return (7, best_hand[:4])  # Каре
+    elif rank_counts[0][1] == 3 and rank_counts[1][1] >= 2:
+        return (6, best_hand[:5])  # Фулл-хаус
+    elif flush_suit:
+        return (5, flush_values[:5])  # Флеш
+    elif straight_high:
+        return (4, [straight_high])  # Стрит
+    elif rank_counts[0][1] == 3:
+        return (3, best_hand[:3
