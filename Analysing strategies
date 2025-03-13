@@ -6,7 +6,7 @@ ranks = "23456789TJQKA"
 suits = "♠️♥️♦️♣️"
 deck = [r + s for r in ranks for s in suits]
 
-# Оценка комбинации (аналогично предыдущему коду)
+# Оценка силы руки
 def evaluate_hand(hand):
     """ Возвращает (ранг комбинации, список карт) """
     values = sorted([ranks.index(card[0]) for card in hand], reverse=True)
@@ -48,21 +48,21 @@ def evaluate_hand(hand):
     return (0, best_hand[:5])  # Старшая карта
 
 # Расчет вероятностей победы
-def calculate_win_probability(player_hand, board, simulations=10000):
+def calculate_win_probability(player_hand, board, num_opponents=1, simulations=10000):
     available_cards = [card for card in deck if card not in player_hand + board]
     wins, ties, losses = 0, 0, 0
 
     for _ in range(simulations):
         random.shuffle(available_cards)
-        opponent_hand = available_cards[:2]
-        community_cards = board + available_cards[2:7-len(board)]
-        
-        player_score = evaluate_hand(player_hand + community_cards)
-        opp_score = evaluate_hand(opponent_hand + community_cards)
+        opponent_hands = [available_cards[i*2:(i+1)*2] for i in range(num_opponents)]
+        community_cards = board + available_cards[2*num_opponents:7-len(board)]
 
-        if player_score > opp_score:
+        player_score = evaluate_hand(player_hand + community_cards)
+        opponent_scores = [evaluate_hand(opp_hand + community_cards) for opp_hand in opponent_hands]
+
+        if all(player_score > opp_score for opp_score in opponent_scores):
             wins += 1
-        elif player_score < opp_score:
+        elif any(player_score < opp_score for opp_score in opponent_scores):
             losses += 1
         else:
             ties += 1
@@ -75,9 +75,9 @@ def calculate_win_probability(player_hand, board, simulations=10000):
     }
 
 # Функция для анализа стратегии
-def analyze_strategy(player_hand, board, pot_size, bet_amount):
+def analyze_strategy(player_hand, board, pot_size, bet_amount, num_opponents=1):
     """ Анализирует ситуацию и дает совет по ставке """
-    odds = calculate_win_probability(player_hand, board)
+    odds = calculate_win_probability(player_hand, board, num_opponents)
     win_chance = odds["win"] / 100
     tie_chance = odds["tie"] / 100
 
@@ -107,9 +107,11 @@ player_hand = ["A♠️", "K♦️"]
 board = ["2♠️", "7♥️", "J♦️"]
 pot_size = 100
 bet_amount = 50
+num_opponents = 2  # Анализ против 2 оппонентов
 
-strategy = analyze_strategy(player_hand, board, pot_size, bet_amount)
+strategy = analyze_strategy(player_hand, board, pot_size, bet_amount, num_opponents)
 
 print(f"Шанс на победу: {strategy['win_chance']}%")
 print(f"Шанс на ничью: {strategy['tie_chance']}%")
 print(f"Совет: {strategy['advice']}")
+
