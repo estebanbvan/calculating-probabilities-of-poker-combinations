@@ -1,0 +1,46 @@
+import itertools
+
+# Все возможные масти и ранги карт
+ranks = "23456789TJQKA"
+suits = "♠️ ♥️ ♦️ ♣️"
+deck = [r + s for r in ranks for s in suits]
+
+# Функция для определения силы комбинации (простой вариант)
+def hand_strength(hand, board):
+    all_cards = hand + board
+    values = sorted([ranks.index(card[0]) for card in all_cards], reverse=True)
+    return sum(v * (14 ** i) for i, v in enumerate(values))  # Простой рейтинг руки
+
+# Функция для расчета вероятностей (перебор возможных рук оппонента)
+def calculate_win_probability(player_hand, board):
+    available_cards = [card for card in deck if card not in player_hand + board]
+    opponent_hands = list(itertools.combinations(available_cards, 2))
+
+    wins, ties, losses = 0, 0, 0
+
+    for opp_hand in opponent_hands:
+        player_score = hand_strength(player_hand, board)
+        opp_score = hand_strength(opp_hand, board)
+        
+        if player_score > opp_score:
+            wins += 1
+        elif player_score < opp_score:
+            losses += 1
+        else:
+            ties += 1
+
+    total = wins + ties + losses
+    return {
+        "win": wins / total * 100,
+        "tie": ties / total * 100,
+        "loss": losses / total * 100
+    }
+
+# Пример использования
+player_hand = ["A♠️", "K♦️"]
+board = ["2♠️", "7♥️", "J♦️"]
+probabilities = calculate_win_probability(player_hand, board)
+
+print(f"Шанс на победу: {probabilities['win']:.2f}%")
+print(f"Шанс на ничью: {probabilities['tie']:.2f}%")
+print(f"Шанс на проигрыш: {probabilities['loss']:.2f}%")
