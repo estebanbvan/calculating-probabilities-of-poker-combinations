@@ -56,4 +56,47 @@ def evaluate_hand(hand):
     elif straight_high:
         return (4, [straight_high])  # Стрит
     elif rank_counts[0][1] == 3:
-        return (3, best_hand[:3
+        return (3, best_hand[:3])  # Сет
+    elif rank_counts[0][1] == 2 and rank_counts[1][1] == 2:
+        return (2, best_hand[:4])  # Две пары
+    elif rank_counts[0][1] == 2:
+        return (1, best_hand[:2])  # Одна пара
+
+    return (0, best_hand[:5])  # Старшая карта
+
+# Функция расчета вероятности победы
+def calculate_win_probability(player_hand, board, simulations=10000):
+    available_cards = [card for card in deck if card not in player_hand + board]
+    wins, ties, losses = 0, 0, 0
+
+    for _ in range(simulations):
+        random.shuffle(available_cards)
+        opponent_hand = available_cards[:2]
+        community_cards = board + available_cards[2:7-len(board)]
+        
+        player_score = evaluate_hand(player_hand + community_cards)
+        opp_score = evaluate_hand(opponent_hand + community_cards)
+
+        if player_score > opp_score:
+            wins += 1
+        elif player_score < opp_score:
+            losses += 1
+        else:
+            ties += 1
+
+    total = wins + ties + losses
+    return {
+        "win": wins / total * 100,
+        "tie": ties / total * 100,
+        "loss": losses / total * 100
+    }
+
+# Пример использования
+player_hand = ["A♠️", "K♦️"]
+board = ["2♠️", "7♥️", "J♦️"]
+probabilities = calculate_win_probability(player_hand, board)
+
+print(f"Шанс на победу: {probabilities['win']:.2f}%")
+print(f"Шанс на ничью: {probabilities['tie']:.2f}%")
+print(f"Шанс на проигрыш: {probabilities['loss']:.2f}%")
+
