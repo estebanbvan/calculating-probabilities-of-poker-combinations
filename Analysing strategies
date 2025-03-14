@@ -1,4 +1,3 @@
-import itertools
 import random
 
 # Все возможные масти и ранги карт
@@ -6,9 +5,9 @@ ranks = "23456789TJQKA"
 suits = "♠️♥️♦️♣️"
 deck = [r + s for r in ranks for s in suits]
 
-# Оценка комбинации (аналогично предыдущему коду)
+# Оценка комбинации
 def evaluate_hand(hand):
-    """ Возвращает (ранг комбинации, список карт) """
+    """Возвращает (ранг комбинации, список карт)"""
     values = sorted([ranks.index(card[0]) for card in hand], reverse=True)
     suits_count = {s: 0 for s in suits}
     ranks_count = {r: 0 for r in ranks}
@@ -22,7 +21,7 @@ def evaluate_hand(hand):
     flush_cards = sorted([ranks.index(card[0]) for card in hand if card[1] == flush_suit], reverse=True) if flush_suit else []
 
     sorted_values = sorted(set(values), reverse=True)
-    straight_high = next((sorted_values[i] for i in range(len(sorted_values) - 4) if sorted_values[i] - sorted_values[i+4] == 4), None)
+    straight_high = next((sorted_values[i] for i in range(len(sorted_values) - 4) if sorted_values[i] - sorted_values[i + 4] == 4), None)
 
     if flush_suit and straight_high:
         return (8, flush_cards[:5])  # Стрит-флеш
@@ -47,8 +46,9 @@ def evaluate_hand(hand):
 
     return (0, best_hand[:5])  # Старшая карта
 
-# Расчет вероятностей победы
+# Оптимизация вероятности победы
 def calculate_win_probability(player_hand, board, simulations=10000):
+    """Расчет вероятности победы игрока"""
     available_cards = [card for card in deck if card not in player_hand + board]
     wins, ties, losses = 0, 0, 0
 
@@ -56,7 +56,7 @@ def calculate_win_probability(player_hand, board, simulations=10000):
         random.shuffle(available_cards)
         opponent_hand = available_cards[:2]
         community_cards = board + available_cards[2:7-len(board)]
-        
+
         player_score = evaluate_hand(player_hand + community_cards)
         opp_score = evaluate_hand(opponent_hand + community_cards)
 
@@ -74,9 +74,9 @@ def calculate_win_probability(player_hand, board, simulations=10000):
         "loss": losses / total * 100
     }
 
-# Функция для анализа стратегии
+# Функция для более точного анализа стратегии
 def analyze_strategy(player_hand, board, pot_size, bet_amount):
-    """ Анализирует ситуацию и дает совет по ставке """
+    """Анализирует ситуацию и дает более точный совет по ставке"""
     odds = calculate_win_probability(player_hand, board)
     win_chance = odds["win"] / 100
     tie_chance = odds["tie"] / 100
@@ -84,7 +84,7 @@ def analyze_strategy(player_hand, board, pot_size, bet_amount):
     # Пот-оддсы (шанс банка)
     call_odds = bet_amount / (pot_size + bet_amount)
 
-    # Решение на основе шансов
+    # Оценка решения
     if win_chance > call_odds:
         advice = "CALL / RAISE (прибыльная ставка)"
     elif win_chance + tie_chance > call_odds:
@@ -96,11 +96,42 @@ def analyze_strategy(player_hand, board, pot_size, bet_amount):
     if win_chance > 0.7:
         advice = "ALL-IN (очень сильная рука)"
 
+    # Предупреждения и дополнительные советы
+    if pot_size > 200 and win_chance < 40:
+        advice += " — Пот большой, но у вас низкие шансы, играйте осторожно."
+
     return {
         "win_chance": round(win_chance * 100, 2),
         "tie_chance": round(tie_chance * 100, 2),
         "advice": advice
     }
+
+# Функция для учета флопа, терна и ривера
+def calculate_improvement_chance(player_hand, board, simulations=10000):
+    """Рассчитывает шанс на улучшение руки"""
+    available_cards = [card for card in deck if card not in player_hand + board]
+    improvements = 0
+
+    for _ in range(simulations):
+        random.shuffle(available_cards)
+
+        # Симулируем флоп, терн и ривер
+        simulated_board = board + available_cards[:3]  # Флоп
+        player_score = evaluate_hand(player_hand + simulated_board)
+
+        # Рассчитываем улучшение на терне
+        simulated_board = board + available_cards[:4]  # Терн
+        player_score_turned = evaluate_hand(player_hand + simulated_board)
+
+        # Рассчитываем улучшение на ривере
+        simulated_board = board + available_cards[:5]  # Ривер
+        player_score_rivered = evaluate_hand(player_hand + simulated_board)
+
+        # Проверяем улучшение
+        if player_score_turned > player_score or player_score_rivered > player_score:
+            improvements += 1
+
+    return round(improvements / simulations * 100, 2)
 
 # Пример использования
 player_hand = ["A♠️", "K♦️"]
@@ -108,8 +139,13 @@ board = ["2♠️", "7♥️", "J♦️"]
 pot_size = 100
 bet_amount = 50
 
+# Анализ стратегии
 strategy = analyze_strategy(player_hand, board, pot_size, bet_amount)
+
+# Шанс на улучшение руки
+improvement_chance = calculate_improvement_chance(player_hand, board)
 
 print(f"Шанс на победу: {strategy['win_chance']}%")
 print(f"Шанс на ничью: {strategy['tie_chance']}%")
 print(f"Совет: {strategy['advice']}")
+print(f"Шанс на улучшение руки: {improvement_chance}%")
